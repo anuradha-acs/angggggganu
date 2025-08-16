@@ -1,10 +1,13 @@
 
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { LeaveTypeService, LeaveType } from '../../services/leave-type.service';
 
 @Component({
   selector: 'app-leave-type-list',
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule],
   template: `
     <div class="container-fluid">
       <div class="d-flex justify-content-between align-items-center mb-4">
@@ -14,39 +17,35 @@ import { LeaveTypeService, LeaveType } from '../../services/leave-type.service';
         </button>
       </div>
 
-      <!-- Add/Edit Leave Type Form -->
       <div class="card mb-4" *ngIf="showAddForm">
         <div class="card-header">
-          <h5>{{editingLeaveType ? 'Edit' : 'Add'}} Leave Type</h5>
+          <h5>{{editingLeaveType ? 'Edit Leave Type' : 'Add New Leave Type'}}</h5>
         </div>
         <div class="card-body">
           <form [formGroup]="leaveTypeForm" (ngSubmit)="onSubmit()">
             <div class="row">
               <div class="col-md-6">
-                <div class="mb-3">
-                  <label for="leaveType" class="form-label">Leave Type *</label>
-                  <input type="text" class="form-control" id="leaveType" 
-                         formControlName="LEAVETYPE"
-                         [class.is-invalid]="leaveTypeForm.get('LEAVETYPE')?.invalid && leaveTypeForm.get('LEAVETYPE')?.touched">
-                  <div class="invalid-feedback" *ngIf="leaveTypeForm.get('LEAVETYPE')?.invalid && leaveTypeForm.get('LEAVETYPE')?.touched">
-                    Leave type is required
+                <div class="form-group">
+                  <label>Leave Type Name <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" formControlName="leaveType">
+                  <div class="invalid-feedback d-block" *ngIf="isFieldInvalid('leaveType')">
+                    Leave type name is required
                   </div>
                 </div>
               </div>
               <div class="col-md-6">
-                <div class="mb-3">
-                  <label for="description" class="form-label">Description</label>
-                  <input type="text" class="form-control" id="description" 
-                         formControlName="DESCRIPTION">
+                <div class="form-group">
+                  <label>Description</label>
+                  <textarea class="form-control" rows="3" formControlName="description"></textarea>
                 </div>
               </div>
             </div>
-            <div class="d-flex gap-2">
-              <button type="submit" class="btn btn-success" [disabled]="leaveTypeForm.invalid || loading">
-                <span class="spinner-border spinner-border-sm me-2" *ngIf="loading"></span>
-                {{loading ? 'Saving...' : (editingLeaveType ? 'Update' : 'Save')}}
+            <div class="form-group">
+              <button type="submit" class="btn btn-primary" [disabled]="leaveTypeForm.invalid || loading">
+                <span *ngIf="loading" class="spinner-border spinner-border-sm mr-2"></span>
+                {{editingLeaveType ? 'Update' : 'Save'}}
               </button>
-              <button type="button" class="btn btn-secondary" (click)="cancelForm()">
+              <button type="button" class="btn btn-secondary ml-2" (click)="cancelEdit()">
                 Cancel
               </button>
             </div>
@@ -54,8 +53,10 @@ import { LeaveTypeService, LeaveType } from '../../services/leave-type.service';
         </div>
       </div>
 
-      <!-- Leave Types List -->
       <div class="card">
+        <div class="card-header">
+          <h5>Leave Types List</h5>
+        </div>
         <div class="card-body">
           <div class="table-responsive">
             <table class="table table-striped">
@@ -71,20 +72,20 @@ import { LeaveTypeService, LeaveType } from '../../services/leave-type.service';
                 <tr *ngFor="let leaveType of leaveTypes">
                   <td>{{leaveType.LEAVETYPEID}}</td>
                   <td>{{leaveType.LEAVETYPE}}</td>
-                  <td>{{leaveType.DESCRIPTION || 'N/A'}}</td>
+                  <td>{{leaveType.DESCRIPTION}}</td>
                   <td>
-                    <div class="btn-group btn-group-sm">
-                      <button class="btn btn-outline-primary" (click)="editLeaveType(leaveType)">
-                        <i class="fas fa-edit"></i> Edit
-                      </button>
-                      <button class="btn btn-outline-danger" (click)="deleteLeaveType(leaveType.LEAVETYPEID!)">
-                        <i class="fas fa-trash"></i> Delete
-                      </button>
-                    </div>
+                    <button class="btn btn-sm btn-info mr-1" (click)="editLeaveType(leaveType)">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" (click)="deleteLeaveType(leaveType.LEAVETYPEID)">
+                      <i class="fas fa-trash"></i>
+                    </button>
                   </td>
                 </tr>
                 <tr *ngIf="leaveTypes.length === 0">
-                  <td colspan="4" class="text-center text-muted">No leave types found</td>
+                  <td colspan="4" class="text-center text-muted py-4">
+                    No leave types found
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -106,65 +107,75 @@ export class LeaveTypeListComponent implements OnInit {
     private leaveTypeService: LeaveTypeService
   ) {
     this.leaveTypeForm = this.fb.group({
-      LEAVETYPE: ['', Validators.required],
-      DESCRIPTION: ['']
+      leaveType: ['', Validators.required],
+      description: ['']
     });
   }
 
-  ngOnInit(): void {
+  ngOnInit() {
     this.loadLeaveTypes();
   }
 
-  loadLeaveTypes(): void {
-    this.leaveTypeService.getAllLeaveTypes().subscribe({
-      next: (leaveTypes) => {
-        this.leaveTypes = leaveTypes;
-      },
-      error: (error) => {
-        console.error('Error loading leave types:', error);
-      }
+  loadLeaveTypes() {
+    this.leaveTypeService.getLeaveTypes().subscribe(leaveTypes => {
+      this.leaveTypes = leaveTypes;
     });
   }
 
-  toggleAddForm(): void {
+  toggleAddForm() {
     this.showAddForm = !this.showAddForm;
     if (!this.showAddForm) {
-      this.cancelForm();
+      this.cancelEdit();
     }
   }
 
-  editLeaveType(leaveType: LeaveType): void {
-    this.editingLeaveType = leaveType;
-    this.showAddForm = true;
-    this.leaveTypeForm.patchValue(leaveType);
+  isFieldInvalid(field: string): boolean {
+    const fieldControl = this.leaveTypeForm.get(field);
+    return !!(fieldControl && fieldControl.invalid && (fieldControl.dirty || fieldControl.touched));
   }
 
-  onSubmit(): void {
+  editLeaveType(leaveType: LeaveType) {
+    this.editingLeaveType = leaveType;
+    this.showAddForm = true;
+    this.leaveTypeForm.patchValue({
+      leaveType: leaveType.LEAVETYPE,
+      description: leaveType.DESCRIPTION
+    });
+  }
+
+  cancelEdit() {
+    this.editingLeaveType = null;
+    this.leaveTypeForm.reset();
+    this.showAddForm = false;
+  }
+
+  onSubmit() {
     if (this.leaveTypeForm.valid) {
       this.loading = true;
-      const leaveTypeData = this.leaveTypeForm.value;
+      const leaveTypeData = {
+        LEAVETYPE: this.leaveTypeForm.value.leaveType,
+        DESCRIPTION: this.leaveTypeForm.value.description
+      };
 
       if (this.editingLeaveType) {
-        this.leaveTypeService.updateLeaveType(this.editingLeaveType.LEAVETYPEID!, leaveTypeData).subscribe({
+        this.leaveTypeService.updateLeaveType(this.editingLeaveType.LEAVETYPEID, leaveTypeData).subscribe({
           next: () => {
-            this.loadLeaveTypes();
-            this.cancelForm();
             this.loading = false;
+            this.loadLeaveTypes();
+            this.cancelEdit();
           },
-          error: (error) => {
-            console.error('Error updating leave type:', error);
+          error: () => {
             this.loading = false;
           }
         });
       } else {
         this.leaveTypeService.createLeaveType(leaveTypeData).subscribe({
           next: () => {
-            this.loadLeaveTypes();
-            this.cancelForm();
             this.loading = false;
+            this.loadLeaveTypes();
+            this.cancelEdit();
           },
-          error: (error) => {
-            console.error('Error creating leave type:', error);
+          error: () => {
             this.loading = false;
           }
         });
@@ -172,25 +183,13 @@ export class LeaveTypeListComponent implements OnInit {
     }
   }
 
-  deleteLeaveType(id: number): void {
+  deleteLeaveType(id: number) {
     if (confirm('Are you sure you want to delete this leave type?')) {
       this.leaveTypeService.deleteLeaveType(id).subscribe({
         next: () => {
           this.loadLeaveTypes();
-        },
-        error: (error) => {
-          console.error('Error deleting leave type:', error);
         }
       });
     }
-  }
-
-  cancelForm(): void {
-    this.showAddForm = false;
-    this.editingLeaveType = null;
-    this.leaveTypeForm.reset({
-      LEAVETYPE: '',
-      DESCRIPTION: ''
-    });
   }
 }

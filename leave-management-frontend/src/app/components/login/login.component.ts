@@ -1,78 +1,92 @@
 
 import { Component } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { CommonModule } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-login',
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule],
   template: `
-    <div class="container-fluid h-100">
-      <div class="row justify-content-center align-items-center h-100">
-        <div class="col-md-6 col-lg-4">
-          <div class="card shadow">
-            <div class="card-body p-5">
-              <div class="text-center mb-4">
-                <h2>Leave Management System</h2>
-                <p class="text-muted">Sign in to your account</p>
-              </div>
-
-              <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-                <div class="mb-3">
-                  <label for="username" class="form-label">Username</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    id="username" 
-                    formControlName="username"
-                    [class.is-invalid]="loginForm.get('username')?.invalid && loginForm.get('username')?.touched"
-                    placeholder="Enter your username">
-                  <div class="invalid-feedback" *ngIf="loginForm.get('username')?.invalid && loginForm.get('username')?.touched">
-                    Username is required
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-xl-10 col-lg-12 col-md-9">
+          <div class="card o-hidden border-0 shadow-lg my-5">
+            <div class="card-body p-0">
+              <div class="row">
+                <div class="col-lg-6 d-none d-lg-block bg-login-image"></div>
+                <div class="col-lg-6">
+                  <div class="p-5">
+                    <div class="text-center">
+                      <h1 class="h4 text-gray-900 mb-4">Welcome Back!</h1>
+                    </div>
+                    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="user">
+                      <div class="form-group">
+                        <input type="text" 
+                               class="form-control form-control-user" 
+                               formControlName="username"
+                               placeholder="Enter Username..."
+                               [class.is-invalid]="isFieldInvalid('username')">
+                        <div class="invalid-feedback" *ngIf="isFieldInvalid('username')">
+                          Username is required
+                        </div>
+                      </div>
+                      <div class="form-group">
+                        <input type="password" 
+                               class="form-control form-control-user"
+                               formControlName="password" 
+                               placeholder="Password"
+                               [class.is-invalid]="isFieldInvalid('password')">
+                        <div class="invalid-feedback" *ngIf="isFieldInvalid('password')">
+                          Password is required
+                        </div>
+                      </div>
+                      <button type="submit" 
+                              class="btn btn-primary btn-user btn-block"
+                              [disabled]="loginForm.invalid || loading">
+                        <span *ngIf="loading" class="spinner-border spinner-border-sm mr-2"></span>
+                        Login
+                      </button>
+                    </form>
+                    <div class="alert alert-danger mt-3" *ngIf="errorMessage">
+                      {{errorMessage}}
+                    </div>
+                    <hr>
+                    <div class="text-center">
+                      <small class="text-muted">
+                        Demo Users:<br>
+                        Admin: admin / admin123<br>
+                        HR: hr.manager / hr123<br>
+                        Employee: john.doe / emp123
+                      </small>
+                    </div>
                   </div>
                 </div>
-
-                <div class="mb-3">
-                  <label for="password" class="form-label">Password</label>
-                  <input 
-                    type="password" 
-                    class="form-control" 
-                    id="password" 
-                    formControlName="password"
-                    [class.is-invalid]="loginForm.get('password')?.invalid && loginForm.get('password')?.touched"
-                    placeholder="Enter your password">
-                  <div class="invalid-feedback" *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched">
-                    Password is required
-                  </div>
-                </div>
-
-                <div class="alert alert-danger" *ngIf="errorMessage">
-                  {{errorMessage}}
-                </div>
-
-                <button 
-                  type="submit" 
-                  class="btn btn-primary w-100" 
-                  [disabled]="loginForm.invalid || loading">
-                  <span class="spinner-border spinner-border-sm me-2" *ngIf="loading"></span>
-                  {{loading ? 'Signing in...' : 'Sign In'}}
-                </button>
-              </form>
-
-              <div class="mt-4">
-                <h6>Demo Accounts:</h6>
-                <small class="text-muted">
-                  <strong>Admin:</strong> admin / admin123<br>
-                  <strong>HR:</strong> hr.manager / hr123<br>
-                  <strong>Employee:</strong> john.doe / emp123
-                </small>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  `
+  `,
+  styles: [`
+    .bg-login-image {
+      background: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' stroke='%23333' stroke-width='3' stroke-dasharray='6%2c 14' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+    .form-control-user {
+      border-radius: 10rem;
+      padding: 1.5rem 1rem;
+    }
+    .btn-user {
+      border-radius: 10rem;
+      padding: 0.75rem 1rem;
+    }
+  `]
 })
 export class LoginComponent {
   loginForm: FormGroup;
@@ -90,7 +104,12 @@ export class LoginComponent {
     });
   }
 
-  onSubmit(): void {
+  isFieldInvalid(field: string): boolean {
+    const fieldControl = this.loginForm.get(field);
+    return !!(fieldControl && fieldControl.invalid && (fieldControl.dirty || fieldControl.touched));
+  }
+
+  onSubmit() {
     if (this.loginForm.valid) {
       this.loading = true;
       this.errorMessage = '';
@@ -99,14 +118,16 @@ export class LoginComponent {
 
       this.authService.login(username, password).subscribe({
         next: (response) => {
+          this.loading = false;
           if (response.success) {
             this.router.navigate(['/dashboard']);
+          } else {
+            this.errorMessage = response.message || 'Login failed';
           }
-          this.loading = false;
         },
         error: (error) => {
-          this.errorMessage = error.error?.error || 'Login failed. Please try again.';
           this.loading = false;
+          this.errorMessage = 'Login failed. Please try again.';
         }
       });
     }

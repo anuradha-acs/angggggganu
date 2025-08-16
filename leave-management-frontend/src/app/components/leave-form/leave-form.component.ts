@@ -1,117 +1,111 @@
 
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { AuthService } from '../../services/auth.service';
 import { LeaveService } from '../../services/leave.service';
 import { LeaveTypeService, LeaveType } from '../../services/leave-type.service';
-import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-leave-form',
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule],
   template: `
-    <div class="row justify-content-center">
-      <div class="col-md-8">
-        <div class="card">
-          <div class="card-header">
-            <h4>Apply for Leave</h4>
+    <div class="card shadow mb-4">
+      <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Apply for Leave</h6>
+      </div>
+      <div class="card-body">
+        <form [formGroup]="leaveForm" (ngSubmit)="onSubmit()">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>Leave Type <span class="text-danger">*</span></label>
+                <select class="form-control" formControlName="leaveType">
+                  <option value="">Select Leave Type</option>
+                  <option *ngFor="let type of leaveTypes" [value]="type.LEAVETYPE">
+                    {{type.LEAVETYPE}}
+                  </option>
+                </select>
+                <div class="invalid-feedback d-block" *ngIf="isFieldInvalid('leaveType')">
+                  Leave type is required
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>Shift Time <span class="text-danger">*</span></label>
+                <select class="form-control" formControlName="shiftTime">
+                  <option value="">Select Shift</option>
+                  <option value="All Day">All Day</option>
+                  <option value="AM">AM</option>
+                  <option value="PM">PM</option>
+                </select>
+                <div class="invalid-feedback d-block" *ngIf="isFieldInvalid('shiftTime')">
+                  Shift time is required
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="card-body">
-            <form [formGroup]="leaveForm" (ngSubmit)="onSubmit()">
-              <div class="row">
-                <div class="col-md-6">
-                  <div class="mb-3">
-                    <label for="leaveType" class="form-label">Leave Type *</label>
-                    <select class="form-select" id="leaveType" formControlName="TYPEOFLEAVE"
-                            [class.is-invalid]="leaveForm.get('TYPEOFLEAVE')?.invalid && leaveForm.get('TYPEOFLEAVE')?.touched">
-                      <option value="">Select Leave Type</option>
-                      <option *ngFor="let type of leaveTypes" [value]="type.LEAVETYPE">
-                        {{type.LEAVETYPE}}
-                      </option>
-                    </select>
-                    <div class="invalid-feedback" *ngIf="leaveForm.get('TYPEOFLEAVE')?.invalid && leaveForm.get('TYPEOFLEAVE')?.touched">
-                      Please select a leave type
-                    </div>
-                  </div>
-                </div>
-                
-                <div class="col-md-6">
-                  <div class="mb-3">
-                    <label for="shiftTime" class="form-label">Shift Time *</label>
-                    <select class="form-select" id="shiftTime" formControlName="SHIFTTIME"
-                            [class.is-invalid]="leaveForm.get('SHIFTTIME')?.invalid && leaveForm.get('SHIFTTIME')?.touched">
-                      <option value="">Select Shift Time</option>
-                      <option value="Full Day">Full Day</option>
-                      <option value="Half Day - Morning">Half Day - Morning</option>
-                      <option value="Half Day - Afternoon">Half Day - Afternoon</option>
-                    </select>
-                    <div class="invalid-feedback" *ngIf="leaveForm.get('SHIFTTIME')?.invalid && leaveForm.get('SHIFTTIME')?.touched">
-                      Please select shift time
-                    </div>
-                  </div>
+          
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>Start Date <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" formControlName="startDate"
+                       (change)="calculateDays()">
+                <div class="invalid-feedback d-block" *ngIf="isFieldInvalid('startDate')">
+                  Start date is required
                 </div>
               </div>
-
-              <div class="row">
-                <div class="col-md-4">
-                  <div class="mb-3">
-                    <label for="startDate" class="form-label">Start Date *</label>
-                    <input type="date" class="form-control" id="startDate" formControlName="DATESTART"
-                           [class.is-invalid]="leaveForm.get('DATESTART')?.invalid && leaveForm.get('DATESTART')?.touched">
-                    <div class="invalid-feedback" *ngIf="leaveForm.get('DATESTART')?.invalid && leaveForm.get('DATESTART')?.touched">
-                      Start date is required
-                    </div>
-                  </div>
-                </div>
-                
-                <div class="col-md-4">
-                  <div class="mb-3">
-                    <label for="endDate" class="form-label">End Date *</label>
-                    <input type="date" class="form-control" id="endDate" formControlName="DATEEND"
-                           [class.is-invalid]="leaveForm.get('DATEEND')?.invalid && leaveForm.get('DATEEND')?.touched">
-                    <div class="invalid-feedback" *ngIf="leaveForm.get('DATEEND')?.invalid && leaveForm.get('DATEEND')?.touched">
-                      End date is required
-                    </div>
-                  </div>
-                </div>
-
-                <div class="col-md-4">
-                  <div class="mb-3">
-                    <label for="noDays" class="form-label">Number of Days</label>
-                    <input type="number" class="form-control" id="noDays" formControlName="NODAYS" 
-                           step="0.5" min="0.5" readonly>
-                  </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>End Date <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" formControlName="endDate"
+                       (change)="calculateDays()">
+                <div class="invalid-feedback d-block" *ngIf="isFieldInvalid('endDate')">
+                  End date is required
                 </div>
               </div>
-
-              <div class="mb-3">
-                <label for="reason" class="form-label">Reason for Leave *</label>
-                <textarea class="form-control" id="reason" rows="4" formControlName="REASON"
-                          [class.is-invalid]="leaveForm.get('REASON')?.invalid && leaveForm.get('REASON')?.touched"
-                          placeholder="Please provide the reason for your leave application"></textarea>
-                <div class="invalid-feedback" *ngIf="leaveForm.get('REASON')?.invalid && leaveForm.get('REASON')?.touched">
-                  Reason is required
-                </div>
-              </div>
-
-              <div class="alert alert-danger" *ngIf="errorMessage">
-                {{errorMessage}}
-              </div>
-
-              <div class="alert alert-success" *ngIf="successMessage">
-                {{successMessage}}
-              </div>
-
-              <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary" [disabled]="leaveForm.invalid || loading">
-                  <span class="spinner-border spinner-border-sm me-2" *ngIf="loading"></span>
-                  {{loading ? 'Submitting...' : 'Submit Application'}}
-                </button>
-                <button type="button" class="btn btn-secondary" routerLink="/dashboard">
-                  Cancel
-                </button>
-              </div>
-            </form>
+            </div>
           </div>
+
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>Number of Days</label>
+                <input type="number" class="form-control" formControlName="noDays" readonly>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Reason <span class="text-danger">*</span></label>
+            <textarea class="form-control" rows="4" formControlName="reason" 
+                      placeholder="Please provide reason for leave"></textarea>
+            <div class="invalid-feedback d-block" *ngIf="isFieldInvalid('reason')">
+              Reason is required
+            </div>
+          </div>
+
+          <div class="form-group">
+            <button type="submit" class="btn btn-primary" [disabled]="leaveForm.invalid || loading">
+              <span *ngIf="loading" class="spinner-border spinner-border-sm mr-2"></span>
+              Submit Leave Request
+            </button>
+            <button type="button" class="btn btn-secondary ml-2" (click)="goBack()">
+              Cancel
+            </button>
+          </div>
+        </form>
+
+        <div class="alert alert-success mt-3" *ngIf="successMessage">
+          {{successMessage}}
+        </div>
+        <div class="alert alert-danger mt-3" *ngIf="errorMessage">
+          {{errorMessage}}
         </div>
       </div>
     </div>
@@ -121,50 +115,45 @@ export class LeaveFormComponent implements OnInit {
   leaveForm: FormGroup;
   leaveTypes: LeaveType[] = [];
   loading = false;
-  errorMessage = '';
   successMessage = '';
+  errorMessage = '';
 
   constructor(
     private fb: FormBuilder,
+    private authService: AuthService,
     private leaveService: LeaveService,
     private leaveTypeService: LeaveTypeService,
-    private authService: AuthService,
     private router: Router
   ) {
     this.leaveForm = this.fb.group({
-      TYPEOFLEAVE: ['', Validators.required],
-      SHIFTTIME: ['', Validators.required],
-      DATESTART: ['', Validators.required],
-      DATEEND: ['', Validators.required],
-      NODAYS: [{value: 0, disabled: true}],
-      REASON: ['', Validators.required]
+      leaveType: ['', Validators.required],
+      shiftTime: ['', Validators.required],
+      startDate: ['', Validators.required],
+      endDate: ['', Validators.required],
+      noDays: [0],
+      reason: ['', Validators.required]
     });
-
-    // Calculate number of days when dates change
-    this.leaveForm.get('DATESTART')?.valueChanges.subscribe(() => this.calculateDays());
-    this.leaveForm.get('DATEEND')?.valueChanges.subscribe(() => this.calculateDays());
-    this.leaveForm.get('SHIFTTIME')?.valueChanges.subscribe(() => this.calculateDays());
   }
 
-  ngOnInit(): void {
+  ngOnInit() {
     this.loadLeaveTypes();
   }
 
-  loadLeaveTypes(): void {
-    this.leaveTypeService.getAllLeaveTypes().subscribe({
-      next: (types) => {
-        this.leaveTypes = types;
-      },
-      error: (error) => {
-        console.error('Error loading leave types:', error);
-      }
+  loadLeaveTypes() {
+    this.leaveTypeService.getLeaveTypes().subscribe(types => {
+      this.leaveTypes = types;
     });
   }
 
-  calculateDays(): void {
-    const startDate = this.leaveForm.get('DATESTART')?.value;
-    const endDate = this.leaveForm.get('DATEEND')?.value;
-    const shiftTime = this.leaveForm.get('SHIFTTIME')?.value;
+  isFieldInvalid(field: string): boolean {
+    const fieldControl = this.leaveForm.get(field);
+    return !!(fieldControl && fieldControl.invalid && (fieldControl.dirty || fieldControl.touched));
+  }
+
+  calculateDays() {
+    const startDate = this.leaveForm.get('startDate')?.value;
+    const endDate = this.leaveForm.get('endDate')?.value;
+    const shiftTime = this.leaveForm.get('shiftTime')?.value;
 
     if (startDate && endDate) {
       const start = new Date(startDate);
@@ -172,52 +161,55 @@ export class LeaveFormComponent implements OnInit {
       const diffTime = Math.abs(end.getTime() - start.getTime());
       let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
-      if (shiftTime && shiftTime.includes('Half Day')) {
+      if (shiftTime === 'AM' || shiftTime === 'PM') {
         diffDays = diffDays * 0.5;
       }
 
-      this.leaveForm.patchValue({NODAYS: diffDays});
+      this.leaveForm.patchValue({ noDays: diffDays });
     }
   }
 
-  onSubmit(): void {
+  onSubmit() {
     if (this.leaveForm.valid) {
       this.loading = true;
       this.errorMessage = '';
       this.successMessage = '';
 
-      const currentUser = this.authService.getCurrentUser();
-      if (!currentUser) {
-        this.errorMessage = 'User not authenticated';
+      const user = this.authService.getCurrentUser();
+      if (!user) {
+        this.errorMessage = 'User not found';
         this.loading = false;
         return;
       }
 
+      const formData = this.leaveForm.value;
       const leaveRequest = {
-        EMPLOYID: currentUser.EMPLOYID,
-        DATESTART: this.leaveForm.value.DATESTART,
-        DATEEND: this.leaveForm.value.DATEEND,
-        NODAYS: this.leaveForm.get('NODAYS')?.value,
-        SHIFTTIME: this.leaveForm.value.SHIFTTIME,
-        TYPEOFLEAVE: this.leaveForm.value.TYPEOFLEAVE,
-        REASON: this.leaveForm.value.REASON
+        employeeId: user.EMPID,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        leaveType: formData.leaveType,
+        reason: formData.reason,
+        shiftTime: formData.shiftTime,
+        noDays: formData.noDays
       };
 
       this.leaveService.createLeave(leaveRequest).subscribe({
         next: (response) => {
-          this.successMessage = 'Leave application submitted successfully!';
-          this.leaveForm.reset();
           this.loading = false;
-          
+          this.successMessage = 'Leave request submitted successfully!';
           setTimeout(() => {
             this.router.navigate(['/my-leaves']);
           }, 2000);
         },
         error: (error) => {
-          this.errorMessage = error.error?.error || 'Failed to submit leave application';
           this.loading = false;
+          this.errorMessage = 'Failed to submit leave request. Please try again.';
         }
       });
     }
+  }
+
+  goBack() {
+    this.router.navigate(['/dashboard']);
   }
 }

@@ -1,23 +1,25 @@
 
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, tap } from 'rxjs';
+import { Observable, BehaviorSubject } from 'rxjs';
+import { tap } from 'rxjs/operators';
 
 export interface User {
+  EMPLOYEEID: string;
   EMPID: string;
-  EMPLOYID: string;
-  EMPNAME: string;
-  EMPPOSITION: string;
-  COMPANY: string;
-  DEPARTMENT: string;
-  EMPSEX?: string;
-  AVELEAVE?: number;
+  FNAME: string;
+  LNAME: string;
+  MNAME: string;
+  username: string;
+  role: string;
+  COMPANYID: string;
+  DEPARTMENTID: string;
 }
 
-export interface AuthResponse {
+export interface LoginResponse {
   success: boolean;
-  user: User;
-  token: string;
+  user?: User;
+  message?: string;
 }
 
 @Injectable({
@@ -29,62 +31,58 @@ export class AuthService {
   public currentUser$ = this.currentUserSubject.asObservable();
 
   constructor(private http: HttpClient) {
-    this.checkAuthStatus();
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) {
+      this.currentUserSubject.next(JSON.parse(savedUser));
+    }
   }
 
-  login(username: string, password: string): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.apiUrl}/auth/login`, {
-      username,
-      password
-    }).pipe(
-      tap(response => {
-        if (response.success) {
-          localStorage.setItem('token', response.token);
-          localStorage.setItem('user', JSON.stringify(response.user));
-          this.currentUserSubject.next(response.user);
-        }
-      })
-    );
+  login(username: string, password: string): Observable<LoginResponse> {
+    return this.http.post<LoginResponse>(`${this.apiUrl}/auth/login`, { username, password })
+      .pipe(
+        tap(response => {
+          if (response.success && response.user) {
+            localStorage.setItem('currentUser', JSON.stringify(response.user));
+            this.currentUserSubject.next(response.user);
+          }
+        })
+      );
   }
 
   logout(): Observable<any> {
-    return this.http.post(`${this.apiUrl}/auth/logout`, {}).pipe(
-      tap(() => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        this.currentUserSubject.next(null);
-      })
-    );
-  }
-
-  isAuthenticated(): boolean {
-    return !!localStorage.getItem('token');
+    return this.http.post(`${this.apiUrl}/auth/logout`, {})
+      .pipe(
+        tap(() => {
+          localStorage.removeItem('currentUser');
+          this.currentUserSubject.next(null);
+        })
+      );
   }
 
   getCurrentUser(): User | null {
-    const user = localStorage.getItem('user');
-    return user ? JSON.parse(user) : null;
+    return this.currentUserSubject.value;
+  }
+
+  isLoggedIn(): boolean {
+    return this.getCurrentUser() !== null;
   }
 
   isAdmin(): boolean {
     const user = this.getCurrentUser();
-    return user?.EMPPOSITION === 'Administrator';
+    return user?.role === 'Administrator';
   }
 
   isHR(): boolean {
     const user = this.getCurrentUser();
-    return user?.EMPPOSITION === 'Supervisor user' || user?.EMPPOSITION === 'Manager user';
+    return user?.role === 'Manager' || user?.role === 'HR';
   }
 
   isEmployee(): boolean {
     const user = this.getCurrentUser();
-    return user?.EMPPOSITION === 'Normal user';
+    return user?.role === 'Employee' || user?.role === 'Normal user';
   }
 
-  private checkAuthStatus(): void {
-    const user = this.getCurrentUser();
-    if (user) {
-      this.currentUserSubject.next(user);
-    }
+  verifySession(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/auth/verify`);
   }
 }

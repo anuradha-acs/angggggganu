@@ -1,13 +1,10 @@
-
 import { bootstrapApplication } from '@angular/platform-browser';
-import { AppComponent } from './app/app.component';
+import { provideRouter } from '@angular/router';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { importProvidersFrom } from '@angular/core';
-import { BrowserModule } from '@angular/platform-browser';
 import { ReactiveFormsModule, FormsModule } from '@angular/forms';
-import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
-import { RouterModule } from '@angular/router';
-import { CommonModule } from '@angular/common';
 
+import { AppComponent } from './app/app.component';
 import { LoginComponent } from './app/components/login/login.component';
 import { DashboardComponent } from './app/components/dashboard/dashboard.component';
 import { LeaveFormComponent } from './app/components/leave-form/leave-form.component';
@@ -17,7 +14,6 @@ import { DepartmentListComponent } from './app/components/department-list/depart
 import { EmployeeListComponent } from './app/components/employee-list/employee-list.component';
 import { LeaveTypeListComponent } from './app/components/leave-type-list/leave-type-list.component';
 import { AuthGuard } from './app/guards/auth.guard';
-import { AuthInterceptor } from './app/interceptors/auth.interceptor';
 
 const routes = [
   { path: '', redirectTo: '/login', pathMatch: 'full' },
@@ -35,19 +31,8 @@ const routes = [
 
 bootstrapApplication(AppComponent, {
   providers: [
-    importProvidersFrom(
-      BrowserModule,
-      CommonModule,
-      ReactiveFormsModule,
-      FormsModule,
-      HttpClientModule,
-      RouterModule.forRoot(routes)
-    ),
-    AuthGuard,
-    {
-      provide: HTTP_INTERCEPTORS,
-      useClass: AuthInterceptor,
-      multi: true
-    }
+    provideRouter(routes),
+    provideHttpClient(),
+    importProvidersFrom(ReactiveFormsModule, FormsModule)
   ]
 }).catch(err => console.error(err));

@@ -4,37 +4,37 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 export interface Company {
-  COMPANYID?: number;
-  COMPANY: string;
-  COMPANYADDRESS?: string;
-  COMPANYSTATUS?: string;
+  COMPANYID: number;
+  COMPANYNAME: string;
+  COMPANYLOCATION: string;
+  COMPANYCONTACT: string;
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class CompanyService {
-  private apiUrl = 'http://localhost:5000/api/companies';
+  private apiUrl = 'http://localhost:5000/api';
 
   constructor(private http: HttpClient) {}
 
-  getAllCompanies(): Observable<Company[]> {
-    return this.http.get<Company[]>(this.apiUrl);
+  getCompanies(): Observable<Company[]> {
+    return this.http.get<Company[]>(`${this.apiUrl}/companies`);
   }
 
-  getCompanyById(id: number): Observable<Company> {
-    return this.http.get<Company>(`${this.apiUrl}/${id}`);
+  getCompany(id: number): Observable<Company> {
+    return this.http.get<Company>(`${this.apiUrl}/companies/${id}`);
   }
 
-  createCompany(company: Company): Observable<any> {
-    return this.http.post(this.apiUrl, company);
+  createCompany(company: Partial<Company>): Observable<any> {
+    return this.http.post(`${this.apiUrl}/companies`, company);
   }
 
-  updateCompany(id: number, company: Company): Observable<any> {
-    return this.http.put(`${this.apiUrl}/${id}`, company);
+  updateCompany(id: number, company: Partial<Company>): Observable<any> {
+    return this.http.put(`${this.apiUrl}/companies/${id}`, company);
   }
 
   deleteCompany(id: number): Observable<any> {
-    return this.http.delete(`${this.apiUrl}/${id}`);
+    return this.http.delete(`${this.apiUrl}/companies/${id}`);
   }
 }

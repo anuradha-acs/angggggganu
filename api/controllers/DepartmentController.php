@@ -1,26 +1,36 @@
-
 <?php
 class DepartmentController {
-    private $db;
+    private $conn;
 
-    public function __construct() {
-        global $mydb;
-        $this->db = $mydb;
+    public function __construct($db) {
+        $this->conn = $db;
     }
 
     public function getAll() {
-        $this->db->setQuery("SELECT * FROM tbldepartment ORDER BY DEPARTMENT");
-        $departments = $this->db->loadResultList();
+        $query = "SELECT * FROM tbldepartment ORDER BY DEPARTMENT";
+        $result = $this->conn->query($query);
 
+        $departments = [];
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $departments[] = $row;
+            }
+        }
+
+        header('Content-Type: application/json');
         echo json_encode($departments);
     }
 
     public function getById($id) {
-        $this->db->setQuery("SELECT * FROM tbldepartment WHERE DEPARTMENTID = $id");
-        $department = $this->db->loadSingleResult();
+        $query = "SELECT * FROM tbldepartment WHERE DEPARTMENTID = ?";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
 
-        if ($department) {
-            echo json_encode($department);
+        if ($row = $result->fetch_assoc()) {
+            header('Content-Type: application/json');
+            echo json_encode($row);
         } else {
             http_response_code(404);
             echo json_encode(['error' => 'Department not found']);
@@ -30,66 +40,73 @@ class DepartmentController {
     public function create() {
         $input = json_decode(file_get_contents('php://input'), true);
 
-        $required = ['DEPARTMENT'];
-        foreach ($required as $field) {
-            if (!isset($input[$field])) {
-                http_response_code(400);
-                echo json_encode(['error' => "Field $field is required"]);
-                return;
-            }
+        if (!isset($input['DEPARTMENT'])) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Department name is required']);
+            return;
         }
 
-        $department = $this->db->escape_value($input['DEPARTMENT']);
-        $departmentDesc = isset($input['DEPARTMENTDESC']) ? $this->db->escape_value($input['DEPARTMENTDESC']) : '';
+        $query = "INSERT INTO tbldepartment (DEPARTMENT, DEPARTMENTDESC) VALUES (?, ?)";
+        $stmt = $this->conn->prepare($query);
+        $departmentDesc = isset($input['DEPARTMENTDESC']) ? $input['DEPARTMENTDESC'] : '';
+        $stmt->bind_param("ss", $input['DEPARTMENT'], $departmentDesc);
 
-        $sql = "INSERT INTO tbldepartment (DEPARTMENT, DEPARTMENTDESC) VALUES ('$department', '$departmentDesc')";
-
-        $this->db->setQuery($sql);
-        $result = $this->db->executeQuery();
-
-        if ($result) {
-            $id = $this->db->insert_id();
-            echo json_encode(['success' => true, 'id' => $id]);
+        if ($stmt->execute()) {
+            echo json_encode(['success' => true, 'message' => 'Department created successfully']);
         } else {
             http_response_code(500);
-            echo json_encode(['error' => 'Failed to create department']);
+            echo json_encode(['success' => false, 'message' => 'Failed to create department']);
         }
     }
 
     public function update($id) {
         $input = json_decode(file_get_contents('php://input'), true);
 
-        $updates = [];
-        if (isset($input['DEPARTMENT'])) $updates[] = "DEPARTMENT = '" . $this->db->escape_value($input['DEPARTMENT']) . "'";
-        if (isset($input['DEPARTMENTDESC'])) $updates[] = "DEPARTMENTDESC = '" . $this->db->escape_value($input['DEPARTMENTDESC']) . "'";
+        $fields = [];
+        $params = [];
+        $types = "";
 
-        if (empty($updates)) {
+        if (isset($input['DEPARTMENT'])) {
+            $fields[] = "DEPARTMENT = ?";
+            $params[] = $input['DEPARTMENT'];
+            $types .= "s";
+        }
+        if (isset($input['DEPARTMENTDESC'])) {
+            $fields[] = "DEPARTMENTDESC = ?";
+            $params[] = $input['DEPARTMENTDESC'];
+            $types .= "s";
+        }
+
+        if (empty($fields)) {
             http_response_code(400);
-            echo json_encode(['error' => 'No fields to update']);
+            echo json_encode(['success' => false, 'message' => 'No fields to update']);
             return;
         }
 
-        $sql = "UPDATE tbldepartment SET " . implode(', ', $updates) . " WHERE DEPARTMENTID = $id";
-        $this->db->setQuery($sql);
-        $result = $this->db->executeQuery();
+        $query = "UPDATE tbldepartment SET " . implode(', ', $fields) . " WHERE DEPARTMENTID = ?";
+        $stmt = $this->conn->prepare($query);
+        $params[] = $id;
+        $types .= "i";
+        $stmt->bind_param($types, ...$params);
 
-        if ($result) {
-            echo json_encode(['success' => true]);
+        if ($stmt->execute()) {
+            echo json_encode(['success' => true, 'message' => 'Department updated successfully']);
         } else {
             http_response_code(500);
-            echo json_encode(['error' => 'Failed to update department']);
+            echo json_encode(['success' => false, 'message' => 'Failed to update department']);
         }
     }
 
     public function delete($id) {
-        $this->db->setQuery("DELETE FROM tbldepartment WHERE DEPARTMENTID = $id");
-        $result = $this->db->executeQuery();
+        $query = "DELETE FROM tbldepartment WHERE DEPARTMENTID = ?";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bind_param("i", $id);
 
-        if ($result) {
-            echo json_encode(['success' => true]);
+        if ($stmt->execute()) {
+            echo json_encode(['success' => true, 'message' => 'Department deleted successfully']);
         } else {
             http_response_code(500);
-            echo json_encode(['error' => 'Failed to delete department']);
+            echo json_encode(['success' => false, 'message' => 'Failed to delete department']);
         }
     }
 }

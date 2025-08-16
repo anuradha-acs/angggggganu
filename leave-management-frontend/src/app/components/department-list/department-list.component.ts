@@ -1,10 +1,13 @@
 
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { DepartmentService, Department } from '../../services/department.service';
 
 @Component({
   selector: 'app-department-list',
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule],
   template: `
     <div class="container-fluid">
       <div class="d-flex justify-content-between align-items-center mb-4">
@@ -14,39 +17,29 @@ import { DepartmentService, Department } from '../../services/department.service
         </button>
       </div>
 
-      <!-- Add/Edit Department Form -->
       <div class="card mb-4" *ngIf="showAddForm">
         <div class="card-header">
-          <h5>{{editingDepartment ? 'Edit' : 'Add'}} Department</h5>
+          <h5>{{editingDepartment ? 'Edit Department' : 'Add New Department'}}</h5>
         </div>
         <div class="card-body">
           <form [formGroup]="departmentForm" (ngSubmit)="onSubmit()">
             <div class="row">
               <div class="col-md-6">
-                <div class="mb-3">
-                  <label for="departmentName" class="form-label">Department Name *</label>
-                  <input type="text" class="form-control" id="departmentName" 
-                         formControlName="DEPARTMENT"
-                         [class.is-invalid]="departmentForm.get('DEPARTMENT')?.invalid && departmentForm.get('DEPARTMENT')?.touched">
-                  <div class="invalid-feedback" *ngIf="departmentForm.get('DEPARTMENT')?.invalid && departmentForm.get('DEPARTMENT')?.touched">
+                <div class="form-group">
+                  <label>Department Name <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" formControlName="departmentName">
+                  <div class="invalid-feedback d-block" *ngIf="isFieldInvalid('departmentName')">
                     Department name is required
                   </div>
                 </div>
               </div>
-              <div class="col-md-6">
-                <div class="mb-3">
-                  <label for="departmentDesc" class="form-label">Description</label>
-                  <input type="text" class="form-control" id="departmentDesc" 
-                         formControlName="DEPARTMENTDESC">
-                </div>
-              </div>
             </div>
-            <div class="d-flex gap-2">
-              <button type="submit" class="btn btn-success" [disabled]="departmentForm.invalid || loading">
-                <span class="spinner-border spinner-border-sm me-2" *ngIf="loading"></span>
-                {{loading ? 'Saving...' : (editingDepartment ? 'Update' : 'Save')}}
+            <div class="form-group">
+              <button type="submit" class="btn btn-primary" [disabled]="departmentForm.invalid || loading">
+                <span *ngIf="loading" class="spinner-border spinner-border-sm mr-2"></span>
+                {{editingDepartment ? 'Update' : 'Save'}}
               </button>
-              <button type="button" class="btn btn-secondary" (click)="cancelForm()">
+              <button type="button" class="btn btn-secondary ml-2" (click)="cancelEdit()">
                 Cancel
               </button>
             </div>
@@ -54,8 +47,10 @@ import { DepartmentService, Department } from '../../services/department.service
         </div>
       </div>
 
-      <!-- Departments List -->
       <div class="card">
+        <div class="card-header">
+          <h5>Departments List</h5>
+        </div>
         <div class="card-body">
           <div class="table-responsive">
             <table class="table table-striped">
@@ -63,7 +58,6 @@ import { DepartmentService, Department } from '../../services/department.service
                 <tr>
                   <th>ID</th>
                   <th>Department Name</th>
-                  <th>Description</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -71,20 +65,19 @@ import { DepartmentService, Department } from '../../services/department.service
                 <tr *ngFor="let department of departments">
                   <td>{{department.DEPARTMENTID}}</td>
                   <td>{{department.DEPARTMENT}}</td>
-                  <td>{{department.DEPARTMENTDESC || 'N/A'}}</td>
                   <td>
-                    <div class="btn-group btn-group-sm">
-                      <button class="btn btn-outline-primary" (click)="editDepartment(department)">
-                        <i class="fas fa-edit"></i> Edit
-                      </button>
-                      <button class="btn btn-outline-danger" (click)="deleteDepartment(department.DEPARTMENTID!)">
-                        <i class="fas fa-trash"></i> Delete
-                      </button>
-                    </div>
+                    <button class="btn btn-sm btn-info mr-1" (click)="editDepartment(department)">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" (click)="deleteDepartment(department.DEPARTMENTID)">
+                      <i class="fas fa-trash"></i>
+                    </button>
                   </td>
                 </tr>
                 <tr *ngIf="departments.length === 0">
-                  <td colspan="4" class="text-center text-muted">No departments found</td>
+                  <td colspan="3" class="text-center text-muted py-4">
+                    No departments found
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -106,65 +99,72 @@ export class DepartmentListComponent implements OnInit {
     private departmentService: DepartmentService
   ) {
     this.departmentForm = this.fb.group({
-      DEPARTMENT: ['', Validators.required],
-      DEPARTMENTDESC: ['']
+      departmentName: ['', Validators.required]
     });
   }
 
-  ngOnInit(): void {
+  ngOnInit() {
     this.loadDepartments();
   }
 
-  loadDepartments(): void {
-    this.departmentService.getAllDepartments().subscribe({
-      next: (departments) => {
-        this.departments = departments;
-      },
-      error: (error) => {
-        console.error('Error loading departments:', error);
-      }
+  loadDepartments() {
+    this.departmentService.getDepartments().subscribe(departments => {
+      this.departments = departments;
     });
   }
 
-  toggleAddForm(): void {
+  toggleAddForm() {
     this.showAddForm = !this.showAddForm;
     if (!this.showAddForm) {
-      this.cancelForm();
+      this.cancelEdit();
     }
   }
 
-  editDepartment(department: Department): void {
-    this.editingDepartment = department;
-    this.showAddForm = true;
-    this.departmentForm.patchValue(department);
+  isFieldInvalid(field: string): boolean {
+    const fieldControl = this.departmentForm.get(field);
+    return !!(fieldControl && fieldControl.invalid && (fieldControl.dirty || fieldControl.touched));
   }
 
-  onSubmit(): void {
+  editDepartment(department: Department) {
+    this.editingDepartment = department;
+    this.showAddForm = true;
+    this.departmentForm.patchValue({
+      departmentName: department.DEPARTMENT
+    });
+  }
+
+  cancelEdit() {
+    this.editingDepartment = null;
+    this.departmentForm.reset();
+    this.showAddForm = false;
+  }
+
+  onSubmit() {
     if (this.departmentForm.valid) {
       this.loading = true;
-      const departmentData = this.departmentForm.value;
+      const departmentData = {
+        DEPARTMENT: this.departmentForm.value.departmentName
+      };
 
       if (this.editingDepartment) {
-        this.departmentService.updateDepartment(this.editingDepartment.DEPARTMENTID!, departmentData).subscribe({
+        this.departmentService.updateDepartment(this.editingDepartment.DEPARTMENTID, departmentData).subscribe({
           next: () => {
-            this.loadDepartments();
-            this.cancelForm();
             this.loading = false;
+            this.loadDepartments();
+            this.cancelEdit();
           },
-          error: (error) => {
-            console.error('Error updating department:', error);
+          error: () => {
             this.loading = false;
           }
         });
       } else {
         this.departmentService.createDepartment(departmentData).subscribe({
           next: () => {
-            this.loadDepartments();
-            this.cancelForm();
             this.loading = false;
+            this.loadDepartments();
+            this.cancelEdit();
           },
-          error: (error) => {
-            console.error('Error creating department:', error);
+          error: () => {
             this.loading = false;
           }
         });
@@ -172,25 +172,13 @@ export class DepartmentListComponent implements OnInit {
     }
   }
 
-  deleteDepartment(id: number): void {
+  deleteDepartment(id: number) {
     if (confirm('Are you sure you want to delete this department?')) {
       this.departmentService.deleteDepartment(id).subscribe({
         next: () => {
           this.loadDepartments();
-        },
-        error: (error) => {
-          console.error('Error deleting department:', error);
         }
       });
     }
-  }
-
-  cancelForm(): void {
-    this.showAddForm = false;
-    this.editingDepartment = null;
-    this.departmentForm.reset({
-      DEPARTMENT: '',
-      DEPARTMENTDESC: ''
-    });
   }
 }

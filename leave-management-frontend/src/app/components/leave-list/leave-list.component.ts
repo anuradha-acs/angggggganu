@@ -1,11 +1,15 @@
 
 import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
-import { LeaveService, Leave } from '../../services/leave.service';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
+import { LeaveService, Leave } from '../../services/leave.service';
 
 @Component({
   selector: 'app-leave-list',
+  standalone: true,
+  imports: [CommonModule, RouterModule, FormsModule],
   template: `
     <div class="container-fluid">
       <div class="card">
@@ -37,33 +41,32 @@ import { AuthService } from '../../services/auth.service';
                   <th>Days</th>
                   <th>Reason</th>
                   <th>Status</th>
-                  <th>Remarks</th>
-                  <th *ngIf="canManageLeaves()">Actions</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 <tr *ngFor="let leave of getFilteredLeaves()">
-                  <td *ngIf="!authService.isEmployee()">{{ leave.EMPNAME }}</td>
-                  <td>{{ leave.TYPEOFLEAVE }}</td>
-                  <td>{{ leave.DATESTART | date }}</td>
-                  <td>{{ leave.DATEEND | date }}</td>
-                  <td>{{ leave.NODAYS }}</td>
-                  <td>{{ leave.REASON }}</td>
+                  <td *ngIf="!authService.isEmployee()">{{leave.employee_name || leave.EMPLOYID}}</td>
+                  <td>{{leave.TYPEOFLEAVE}}</td>
+                  <td>{{leave.DATESTART | date}}</td>
+                  <td>{{leave.DATEEND | date}}</td>
+                  <td>{{leave.NODAYS}}</td>
+                  <td>{{leave.REASON}}</td>
                   <td>
-                    <span class="badge" 
-                          [class.bg-warning]="leave.LEAVESTATUS === 'PENDING'"
-                          [class.bg-success]="leave.LEAVESTATUS === 'APPROVED'"
-                          [class.bg-danger]="leave.LEAVESTATUS === 'REJECTED'">
-                      {{ leave.LEAVESTATUS }}
+                    <span [class]="getStatusClass(leave.LEAVESTATUS)">
+                      {{leave.LEAVESTATUS}}
                     </span>
                   </td>
-                  <td>{{ leave.ADMINREMARKS }}</td>
-                  <td *ngIf="canManageLeaves()">
-                    <div class="btn-group btn-group-sm" *ngIf="leave.LEAVESTATUS === 'PENDING'">
-                      <button class="btn btn-success" (click)="updateLeaveStatus(leave.LEAVEID!, 'APPROVED')">
+                  <td>
+                    <div class="btn-group" *ngIf="canManageLeave(leave)">
+                      <button class="btn btn-sm btn-success" 
+                              (click)="updateLeaveStatus(leave.LEAVEID, 'APPROVED')"
+                              *ngIf="leave.LEAVESTATUS === 'PENDING'">
                         Approve
                       </button>
-                      <button class="btn btn-danger" (click)="updateLeaveStatus(leave.LEAVEID!, 'REJECTED')">
+                      <button class="btn btn-sm btn-danger" 
+                              (click)="updateLeaveStatus(leave.LEAVEID, 'REJECTED')"
+                              *ngIf="leave.LEAVESTATUS === 'PENDING'">
                         Reject
                       </button>
                     </div>
@@ -83,48 +86,15 @@ import { AuthService } from '../../services/auth.service';
         </div>
       </div>
     </div>
-
-    <!-- Action Modal -->
-    <div class="modal fade" id="actionModal" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">{{actionType}} Leave Application</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-3">
-              <label for="remarks" class="form-label">Remarks</label>
-              <textarea class="form-control" id="remarks" rows="3" 
-                        [(ngModel)]="actionRemarks" 
-                        [placeholder]="'Enter remarks for ' + actionType.toLowerCase()"></textarea>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn" 
-                    [class.btn-success]="actionType === 'Approve'"
-                    [class.btn-danger]="actionType === 'Reject'"
-                    (click)="confirmLeaveAction()">
-              {{actionType}}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
   `
 })
 export class LeaveListComponent implements OnInit {
   leaves: Leave[] = [];
   filterStatus = '';
-  actionType = '';
-  actionLeaveId: number | null = null;
-  actionRemarks = '';
 
   constructor(
     public authService: AuthService,
-    private leaveService: LeaveService,
-    private router: Router
+    private leaveService: LeaveService
   ) {}
 
   ngOnInit() {
@@ -132,25 +102,18 @@ export class LeaveListComponent implements OnInit {
   }
 
   loadLeaves() {
-    const currentRoute = this.router.url;
-    
-    if (currentRoute.includes('my-leaves') || this.authService.isEmployee()) {
-      this.leaveService.getMyLeaves().subscribe(leaves => {
+    const user = this.authService.getCurrentUser();
+    if (!user) return;
+
+    if (this.authService.isEmployee()) {
+      this.leaveService.getMyLeaves(user.EMPID).subscribe(leaves => {
         this.leaves = leaves;
       });
     } else {
-      this.leaveService.getAllLeaves().subscribe(leaves => {
+      this.leaveService.getLeaves().subscribe(leaves => {
         this.leaves = leaves;
       });
     }
-  }
-
-  getPageTitle(): string {
-    const currentRoute = this.router.url;
-    if (currentRoute.includes('my-leaves')) {
-      return 'My Leave Applications';
-    }
-    return 'Manage Leave Applications';
   }
 
   getFilteredLeaves(): Leave[] {
@@ -160,46 +123,40 @@ export class LeaveListComponent implements OnInit {
     return this.leaves.filter(leave => leave.LEAVESTATUS === this.filterStatus);
   }
 
+  getPageTitle(): string {
+    if (this.authService.isEmployee()) {
+      return 'My Leave Applications';
+    }
+    return 'Manage Leave Applications';
+  }
+
   getColumnCount(): number {
-    return this.authService.isEmployee() ? 7 : (this.canManageLeaves() ? 9 : 8);
+    return this.authService.isEmployee() ? 7 : 8;
   }
 
-  canManageLeaves(): boolean {
-    return (this.authService.isAdmin() || this.authService.isHR()) && 
-           !this.router.url.includes('my-leaves');
-  }
-
-  updateLeaveStatus(leaveId: number, status: string) {
-    this.actionType = status === 'APPROVED' ? 'Approve' : 'Reject';
-    this.actionLeaveId = leaveId;
-    this.actionRemarks = '';
-    
-    // Show modal (you would need to implement modal trigger here)
-    // For now, we'll call the API directly
-    this.confirmLeaveAction();
-  }
-
-  confirmLeaveAction() {
-    if (this.actionLeaveId) {
-      const status = this.actionType === 'Approve' ? 'APPROVED' : 'REJECTED';
-      const remarks = this.actionRemarks || (status === 'APPROVED' ? 'Approved' : 'Rejected');
-
-      this.leaveService.updateLeaveStatus(this.actionLeaveId, status, remarks).subscribe({
-        next: () => {
-          this.loadLeaves();
-          // Close modal (if using Bootstrap modal)
-          this.resetActionData();
-        },
-        error: (error) => {
-          console.error('Error updating leave status:', error);
-        }
-      });
+  getStatusClass(status: string): string {
+    switch (status) {
+      case 'APPROVED': return 'badge badge-success';
+      case 'PENDING': return 'badge badge-warning';
+      case 'REJECTED': return 'badge badge-danger';
+      default: return 'badge badge-secondary';
     }
   }
 
-  private resetActionData() {
-    this.actionType = '';
-    this.actionLeaveId = null;
-    this.actionRemarks = '';
+  canManageLeave(leave: Leave): boolean {
+    return (this.authService.isAdmin() || this.authService.isHR()) && leave.LEAVESTATUS === 'PENDING';
+  }
+
+  updateLeaveStatus(leaveId: number, status: string) {
+    const remarks = status === 'APPROVED' ? 'Approved by management' : 'Rejected by management';
+    
+    this.leaveService.updateLeaveStatus(leaveId, status, remarks).subscribe({
+      next: () => {
+        this.loadLeaves();
+      },
+      error: (error) => {
+        console.error('Error updating leave status:', error);
+      }
+    });
   }
 }

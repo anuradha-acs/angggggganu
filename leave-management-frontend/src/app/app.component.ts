@@ -1,17 +1,24 @@
 
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { Router } from '@angular/router';
-import { AuthService, User } from './services/auth.service';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
+import { AuthService } from './services/auth.service';
 
 @Component({
   selector: 'app-root',
+  standalone: true,
+  imports: [CommonModule, RouterModule],
   template: `
-    <div class="d-flex h-100" *ngIf="authService.isAuthenticated()">
+    <div id="wrapper" *ngIf="authService.isLoggedIn(); else loginView">
       <!-- Sidebar -->
-      <nav class="navbar-nav bg-primary sidebar sidebar-dark accordion" id="accordionSidebar" style="min-width: 250px;">
-        <div class="sidebar-brand d-flex align-items-center justify-content-center">
-          <div class="sidebar-brand-text mx-3">Leave Management</div>
-        </div>
+      <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+        <a class="sidebar-brand d-flex align-items-center justify-content-center" href="index.html">
+          <div class="sidebar-brand-icon rotate-n-15">
+            <i class="fas fa-calendar"></i>
+          </div>
+          <div class="sidebar-brand-text mx-3">Leave Manager</div>
+        </a>
 
         <hr class="sidebar-divider my-0">
 
@@ -80,125 +87,69 @@ import { AuthService, User } from './services/auth.service';
         </li>
 
         <hr class="sidebar-divider d-none d-md-block">
-      </nav>
+
+        <div class="text-center d-none d-md-inline">
+          <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+      </ul>
 
       <!-- Content Wrapper -->
-      <div id="content-wrapper" class="d-flex flex-column w-100">
-        <!-- Topbar -->
-        <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
-          <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
-            <i class="fa fa-bars"></i>
-          </button>
+      <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+          <!-- Topbar -->
+          <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
+            <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
+              <i class="fa fa-bars"></i>
+            </button>
 
-          <ul class="navbar-nav ml-auto">
-            <li class="nav-item dropdown no-arrow">
-              <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" 
-                 data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                <span class="mr-2 d-none d-lg-inline text-gray-600 small">{{currentUser?.EMPNAME}}</span>
-                <i class="fas fa-user-circle fa-fw"></i>
-              </a>
-              <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">
-                <a class="dropdown-item" href="#" routerLink="/profile">
-                  <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
-                  Profile
+            <ul class="navbar-nav ml-auto">
+              <div class="topbar-divider d-none d-sm-block"></div>
+              <li class="nav-item dropdown no-arrow">
+                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" 
+                   data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                  <span class="mr-2 d-none d-lg-inline text-gray-600 small">{{authService.getCurrentUser()?.username}}</span>
+                  <img class="img-profile rounded-circle" src="https://via.placeholder.com/60x60">
                 </a>
-                <div class="dropdown-divider"></div>
-                <a class="dropdown-item" href="#" (click)="logout()">
-                  <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
-                  Logout
-                </a>
-              </div>
-            </li>
-          </ul>
-        </nav>
+                <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">
+                  <a class="dropdown-item" href="#" (click)="logout()">
+                    <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
+                    Logout
+                  </a>
+                </div>
+              </li>
+            </ul>
+          </nav>
 
-        <!-- Page Content -->
-        <div id="content" class="container-fluid">
-          <router-outlet></router-outlet>
+          <!-- Page Content -->
+          <div class="container-fluid">
+            <router-outlet></router-outlet>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Login page (no sidebar/topbar) -->
-    <div *ngIf="!authService.isAuthenticated()">
+    <ng-template #loginView>
       <router-outlet></router-outlet>
-    </div>
+    </ng-template>
   `,
   styles: [`
     .sidebar {
-      min-height: 100vh;
+      width: 14rem;
     }
-    .sidebar-brand {
-      height: 4.375rem;
-      text-decoration: none;
-      font-size: 1rem;
-      font-weight: 800;
-      padding: 1.5rem 1rem;
-      text-align: center;
-      letter-spacing: 0.05rem;
-      z-index: 1;
-    }
-    .nav-link {
-      display: block;
-      padding: 1rem;
-      color: rgba(255, 255, 255, 0.8) !important;
-      text-decoration: none;
-    }
-    .nav-link:hover {
-      color: #fff !important;
-    }
-    .nav-link.active {
-      color: #fff !important;
-      background-color: rgba(255, 255, 255, 0.1);
-    }
-    .sidebar-divider {
-      border-top: 1px solid rgba(255, 255, 255, 0.15);
-      margin: 0 1rem 1rem;
-    }
-    .sidebar-heading {
-      font-size: 0.65rem;
-      font-weight: 800;
-      color: rgba(255, 255, 255, 0.4);
-      text-transform: uppercase;
-      letter-spacing: 0.1rem;
-      padding: 1.5rem 1rem 0.5rem;
-    }
-    .topbar {
-      height: 4.375rem;
-    }
-    #content-wrapper {
-      overflow-x: hidden;
-    }
-    #content {
-      flex: 1 0 auto;
+    .img-profile {
+      height: 2rem;
+      width: 2rem;
     }
   `]
 })
-export class AppComponent implements OnInit {
-  currentUser: User | null = null;
-
+export class AppComponent {
   constructor(
     public authService: AuthService,
     private router: Router
   ) {}
 
-  ngOnInit(): void {
-    this.authService.currentUser$.subscribe(user => {
-      this.currentUser = user;
-    });
-  }
-
-  logout(): void {
-    this.authService.logout().subscribe({
-      next: () => {
-        this.router.navigate(['/login']);
-      },
-      error: () => {
-        // Force logout even if API call fails
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        this.router.navigate(['/login']);
-      }
-    });
+  logout() {
+    this.authService.logout();
+    this.router.navigate(['/login']);
   }
 }

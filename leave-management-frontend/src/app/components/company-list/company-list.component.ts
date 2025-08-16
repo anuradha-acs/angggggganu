@@ -1,10 +1,13 @@
 
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { CompanyService, Company } from '../../services/company.service';
 
 @Component({
   selector: 'app-company-list',
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule],
   template: `
     <div class="container-fluid">
       <div class="d-flex justify-content-between align-items-center mb-4">
@@ -14,50 +17,43 @@ import { CompanyService, Company } from '../../services/company.service';
         </button>
       </div>
 
-      <!-- Add/Edit Company Form -->
       <div class="card mb-4" *ngIf="showAddForm">
         <div class="card-header">
-          <h5>{{editingCompany ? 'Edit' : 'Add'}} Company</h5>
+          <h5>{{editingCompany ? 'Edit Company' : 'Add New Company'}}</h5>
         </div>
         <div class="card-body">
           <form [formGroup]="companyForm" (ngSubmit)="onSubmit()">
             <div class="row">
               <div class="col-md-6">
-                <div class="mb-3">
-                  <label for="companyName" class="form-label">Company Name *</label>
-                  <input type="text" class="form-control" id="companyName" 
-                         formControlName="COMPANY"
-                         [class.is-invalid]="companyForm.get('COMPANY')?.invalid && companyForm.get('COMPANY')?.touched">
-                  <div class="invalid-feedback" *ngIf="companyForm.get('COMPANY')?.invalid && companyForm.get('COMPANY')?.touched">
+                <div class="form-group">
+                  <label>Company Name <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" formControlName="companyName">
+                  <div class="invalid-feedback d-block" *ngIf="isFieldInvalid('companyName')">
                     Company name is required
                   </div>
                 </div>
               </div>
               <div class="col-md-6">
-                <div class="mb-3">
-                  <label for="companyAddress" class="form-label">Company Address</label>
-                  <input type="text" class="form-control" id="companyAddress" 
-                         formControlName="COMPANYADDRESS">
+                <div class="form-group">
+                  <label>Location</label>
+                  <input type="text" class="form-control" formControlName="location">
                 </div>
               </div>
             </div>
             <div class="row">
               <div class="col-md-6">
-                <div class="mb-3">
-                  <label for="companyStatus" class="form-label">Status</label>
-                  <select class="form-select" id="companyStatus" formControlName="COMPANYSTATUS">
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
+                <div class="form-group">
+                  <label>Contact</label>
+                  <input type="text" class="form-control" formControlName="contact">
                 </div>
               </div>
             </div>
-            <div class="d-flex gap-2">
-              <button type="submit" class="btn btn-success" [disabled]="companyForm.invalid || loading">
-                <span class="spinner-border spinner-border-sm me-2" *ngIf="loading"></span>
-                {{loading ? 'Saving...' : (editingCompany ? 'Update' : 'Save')}}
+            <div class="form-group">
+              <button type="submit" class="btn btn-primary" [disabled]="companyForm.invalid || loading">
+                <span *ngIf="loading" class="spinner-border spinner-border-sm mr-2"></span>
+                {{editingCompany ? 'Update' : 'Save'}}
               </button>
-              <button type="button" class="btn btn-secondary" (click)="cancelForm()">
+              <button type="button" class="btn btn-secondary ml-2" (click)="cancelEdit()">
                 Cancel
               </button>
             </div>
@@ -65,8 +61,10 @@ import { CompanyService, Company } from '../../services/company.service';
         </div>
       </div>
 
-      <!-- Companies List -->
       <div class="card">
+        <div class="card-header">
+          <h5>Companies List</h5>
+        </div>
         <div class="card-body">
           <div class="table-responsive">
             <table class="table table-striped">
@@ -74,36 +72,30 @@ import { CompanyService, Company } from '../../services/company.service';
                 <tr>
                   <th>ID</th>
                   <th>Company Name</th>
-                  <th>Address</th>
-                  <th>Status</th>
+                  <th>Location</th>
+                  <th>Contact</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 <tr *ngFor="let company of companies">
                   <td>{{company.COMPANYID}}</td>
-                  <td>{{company.COMPANY}}</td>
-                  <td>{{company.COMPANYADDRESS || 'N/A'}}</td>
+                  <td>{{company.COMPANYNAME}}</td>
+                  <td>{{company.COMPANYLOCATION}}</td>
+                  <td>{{company.COMPANYCONTACT}}</td>
                   <td>
-                    <span class="badge" 
-                          [class.bg-success]="company.COMPANYSTATUS === 'Active'"
-                          [class.bg-secondary]="company.COMPANYSTATUS === 'Inactive'">
-                      {{company.COMPANYSTATUS}}
-                    </span>
-                  </td>
-                  <td>
-                    <div class="btn-group btn-group-sm">
-                      <button class="btn btn-outline-primary" (click)="editCompany(company)">
-                        <i class="fas fa-edit"></i> Edit
-                      </button>
-                      <button class="btn btn-outline-danger" (click)="deleteCompany(company.COMPANYID!)">
-                        <i class="fas fa-trash"></i> Delete
-                      </button>
-                    </div>
+                    <button class="btn btn-sm btn-info mr-1" (click)="editCompany(company)">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" (click)="deleteCompany(company.COMPANYID)">
+                      <i class="fas fa-trash"></i>
+                    </button>
                   </td>
                 </tr>
                 <tr *ngIf="companies.length === 0">
-                  <td colspan="5" class="text-center text-muted">No companies found</td>
+                  <td colspan="5" class="text-center text-muted py-4">
+                    No companies found
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -125,66 +117,80 @@ export class CompanyListComponent implements OnInit {
     private companyService: CompanyService
   ) {
     this.companyForm = this.fb.group({
-      COMPANY: ['', Validators.required],
-      COMPANYADDRESS: [''],
-      COMPANYSTATUS: ['Active']
+      companyName: ['', Validators.required],
+      location: [''],
+      contact: ['']
     });
   }
 
-  ngOnInit(): void {
+  ngOnInit() {
     this.loadCompanies();
   }
 
-  loadCompanies(): void {
-    this.companyService.getAllCompanies().subscribe({
-      next: (companies) => {
-        this.companies = companies;
-      },
-      error: (error) => {
-        console.error('Error loading companies:', error);
-      }
+  loadCompanies() {
+    this.companyService.getCompanies().subscribe(companies => {
+      this.companies = companies;
     });
   }
 
-  toggleAddForm(): void {
+  toggleAddForm() {
     this.showAddForm = !this.showAddForm;
     if (!this.showAddForm) {
-      this.cancelForm();
+      this.cancelEdit();
     }
   }
 
-  editCompany(company: Company): void {
-    this.editingCompany = company;
-    this.showAddForm = true;
-    this.companyForm.patchValue(company);
+  isFieldInvalid(field: string): boolean {
+    const fieldControl = this.companyForm.get(field);
+    return !!(fieldControl && fieldControl.invalid && (fieldControl.dirty || fieldControl.touched));
   }
 
-  onSubmit(): void {
+  editCompany(company: Company) {
+    this.editingCompany = company;
+    this.showAddForm = true;
+    this.companyForm.patchValue({
+      companyName: company.COMPANYNAME,
+      location: company.COMPANYLOCATION,
+      contact: company.COMPANYCONTACT
+    });
+  }
+
+  cancelEdit() {
+    this.editingCompany = null;
+    this.companyForm.reset();
+    this.showAddForm = false;
+  }
+
+  onSubmit() {
     if (this.companyForm.valid) {
       this.loading = true;
-      const companyData = this.companyForm.value;
+      const formData = this.companyForm.value;
+
+      const companyData = {
+        COMPANYNAME: formData.companyName,
+        COMPANYLOCATION: formData.location,
+        COMPANYCONTACT: formData.contact
+      };
 
       if (this.editingCompany) {
-        this.companyService.updateCompany(this.editingCompany.COMPANYID!, companyData).subscribe({
+        this.companyService.updateCompany(this.editingCompany.COMPANYID, companyData).subscribe({
           next: () => {
-            this.loadCompanies();
-            this.cancelForm();
             this.loading = false;
+            this.loadCompanies();
+            this.cancelEdit();
           },
-          error: (error) => {
-            console.error('Error updating company:', error);
+          error: () => {
             this.loading = false;
           }
         });
       } else {
         this.companyService.createCompany(companyData).subscribe({
           next: () => {
-            this.loadCompanies();
-            this.cancelForm();
             this.loading = false;
+            this.loadCompanies();
+            this.cancelEdit();
           },
-          error: (error) => {
-            console.error('Error creating company:', error);
+          error: () => {
             this.loading = false;
           }
         });
@@ -192,26 +198,13 @@ export class CompanyListComponent implements OnInit {
     }
   }
 
-  deleteCompany(id: number): void {
+  deleteCompany(id: number) {
     if (confirm('Are you sure you want to delete this company?')) {
       this.companyService.deleteCompany(id).subscribe({
         next: () => {
           this.loadCompanies();
-        },
-        error: (error) => {
-          console.error('Error deleting company:', error);
         }
       });
     }
-  }
-
-  cancelForm(): void {
-    this.showAddForm = false;
-    this.editingCompany = null;
-    this.companyForm.reset({
-      COMPANY: '',
-      COMPANYADDRESS: '',
-      COMPANYSTATUS: 'Active'
-    });
   }
 }
