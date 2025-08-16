@@ -1,0 +1,59 @@
+modules = ["php-8.2", "nodejs-20", "web"]
+run = "node index.js"
+
+[nix]
+channel = "stable-25_05"
+
+[deployment]
+run = ["sh", "-c", "node index.js"]
+
+[workflows]
+runButton = "Start Full Stack"
+
+[[workflows.workflow]]
+name = "Start PHP Server"
+author = 46280865
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "php -S 0.0.0.0:5000"
+
+[[workflows.workflow]]
+name = "Start Full Stack App"
+author = 46280865
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "php -S 0.0.0.0:5000"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd leave-management-frontend && npm start"
+
+[[workflows.workflow]]
+name = "Start Backend Server"
+author = 46492252
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd backend && php -S 0.0.0.0:5000"
+
+[[workflows.workflow]]
+name = "Start Full Stack"
+author = 46492252
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd backend && php -S 0.0.0.0:5000"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd frontend && npm start"
+
+[[ports]]
+localPort = 5000
+externalPort = 80

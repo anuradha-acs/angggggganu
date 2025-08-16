@@ -1,0 +1,96 @@
+
+<div class="container-fluid">
+  <!-- Navigation -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">Leave Management</a>
+      <div class="navbar-nav ms-auto">
+        <span class="navbar-text me-3">Welcome, {{ currentUser?.EMPNAME }}</span>
+        <button class="btn btn-outline-light btn-sm" (click)="logout()">Logout</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="row mt-4">
+    <!-- Sidebar -->
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-header">Menu</div>
+        <div class="list-group list-group-flush">
+          <a class="list-group-item list-group-item-action" routerLink="/dashboard">Dashboard</a>
+          <a class="list-group-item list-group-item-action" routerLink="/apply-leave">Apply Leave</a>
+          <a class="list-group-item list-group-item-action" routerLink="/leaves">My Leaves</a>
+          <a *ngIf="isAdmin() || isHR()" class="list-group-item list-group-item-action" href="#">Manage Leaves</a>
+          <a *ngIf="isAdmin()" class="list-group-item list-group-item-action" href="#">Manage Employees</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="col-md-9">
+      <div class="row">
+        <div class="col-md-4">
+          <div class="card bg-primary text-white">
+            <div class="card-body">
+              <h5>Available Leave</h5>
+              <h2>{{ availableLeave }}</h2>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card bg-success text-white">
+            <div class="card-body">
+              <h5>Approved Leaves</h5>
+              <h2>{{ approvedLeaves }}</h2>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card bg-warning text-white">
+            <div class="card-body">
+              <h5>Pending Leaves</h5>
+              <h2>{{ pendingLeaves }}</h2>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt-4">
+        <div class="card-header">Recent Leave Applications</div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Date Applied</th>
+                  <th>Leave Type</th>
+                  <th>Start Date</th>
+                  <th>End Date</th>
+                  <th>Days</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let leave of recentLeaves">
+                  <td>{{ leave.DATEPOSTED | date }}</td>
+                  <td>{{ leave.TYPEOFLEAVE }}</td>
+                  <td>{{ leave.DATESTART | date }}</td>
+                  <td>{{ leave.DATEEND | date }}</td>
+                  <td>{{ leave.NODAYS }}</td>
+                  <td>
+                    <span class="badge" 
+                          [class.bg-warning]="leave.LEAVESTATUS === 'PENDING'"
+                          [class.bg-success]="leave.LEAVESTATUS === 'APPROVED'"
+                          [class.bg-danger]="leave.LEAVESTATUS === 'REJECTED'">
+                      {{ leave.LEAVESTATUS }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
